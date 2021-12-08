@@ -16,13 +16,17 @@ def compute_accuracy(logits, labels):
 
 
 def main():
+
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+
     train_data = datasets.CIFAR10(
-        root="datasets/cifar10",
+        root="../datasets/cifar10",
         train=True,
         download=True,
         transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor()]),
     )
-    train_loader = DataLoader(train_data, batch_size=16, shuffle=False)
+    train_loader = DataLoader(train_data, batch_size=64, shuffle=False)
     image, label = next(iter(train_loader))
 
     im_size = image.shape[-1]
@@ -30,6 +34,8 @@ def main():
     embedding_dim = 64
     # Number of classes
     output_dim = 10
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vit = VisionTransformer(
         im_size,
@@ -39,35 +45,36 @@ def main():
         num_heads=4,
         num_encoder_layers=8,
     )
+    vit.to(device)
 
     print("Number of parameters", sum(p.numel() for p in vit.parameters()))
 
-    optimizer = optim.SGD(vit.parameters(), lr=1e-2, momentum=0.9)
-
+    optimizer = optim.Adam(vit.parameters(), lr=1e-3)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(16):
-        running_loss = 0.0
-        running_accuracy = 0.0
+    def running_mean(current_value, new_value, step):
+        return 1 / (step + 1) * (step * current_value + new_value)
+
+    for epoch in range(1000):
+        mean_loss, mean_accuracy = 0.0, 0.0
         for step, batch in enumerate(train_loader):
-            images, labels = batch
+            images, labels = [x.to(device) for x in batch]
             logits = vit(images)
 
             optimizer.zero_grad()
-            loss = criterion(logits, label)
+
+            loss = criterion(logits, labels)
             loss.backward()
             optimizer.step()
 
             accuracy = compute_accuracy(logits, labels)
 
-            running_loss = 1 / (step + 1) * (step * running_loss + loss.item())
-            running_accuracy = (
-                1 / (step + 1) * (step * running_accuracy + accuracy.item())
-            )
+            mean_loss = running_mean(mean_loss, loss.item(), step)
+            mean_accuracy = running_mean(mean_accuracy, accuracy.item(), step)
 
             print(
                 "\rBatch {} - step {} - loss {:.3f} - accuracy {:.3f}".format(
-                    epoch + 1, step + 1, running_loss, running_accuracy
+                    epoch + 1, step + 1, mean_loss, mean_accuracy
                 ),
                 end="",
             )

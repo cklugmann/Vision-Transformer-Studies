@@ -4,15 +4,6 @@ import torch.nn as nn
 from ViT.transformer import MultiHeadAttention
 
 
-class LayerNorm(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def __call__(self, x, *args, **kwargs):
-        norm = torch.nn.LayerNorm(normalized_shape=x.shape[-2:])
-        return norm(x)
-
-
 class PositionWiseFFN(nn.Module):
     def __init__(self, num_features: int, num_layers: int = 1):
         super().__init__()
@@ -38,7 +29,8 @@ class TransformerBlock(nn.Module):
         self.mha = MultiHeadAttention(
             input_dim=hidden_dim, output_dim=hidden_dim, num_heads=num_heads
         )
-        self.norm = LayerNorm()
+        self.norm1 = torch.nn.LayerNorm(normalized_shape=hidden_dim)
+        self.norm2 = torch.nn.LayerNorm(normalized_shape=hidden_dim)
         self.ffn = PositionWiseFFN(num_features=self.mha.output_dim)
 
     def get_output_dim(self):
@@ -49,17 +41,14 @@ class TransformerBlock(nn.Module):
         :param x: A torch tensor of shape (B, N, D)
             where B is the batch size, N the sequence length and D the number of features.
         """
-        z = self.norm(x + self.mha(x))
-        z = self.norm(z + self.ffn(z))
+        z = self.norm1(x + self.mha(x))
+        z = self.norm2(z + self.ffn(z))
         return z
 
 
 class TransformerEncoder(nn.Module):
     def __init__(
-        self,
-        hidden_dim: int,
-        num_heads: int,
-        num_encoder_layers: int,
+        self, hidden_dim: int, num_heads: int, num_encoder_layers: int,
     ):
         super().__init__()
         blocks = list()
@@ -96,9 +85,7 @@ class VisionTransformer(nn.Module):
         self.embedding_weights = nn.Parameter(torch.rand(num_features, embedding_dim))
 
         # Learnable class token
-        self.class_token = nn.Parameter(
-            torch.rand(1, self.embedding_dim)
-        )
+        self.class_token = nn.Parameter(torch.rand(1, self.embedding_dim))
 
         # Learnable positional encoding
         self.positional_encoding = nn.Parameter(
@@ -106,7 +93,9 @@ class VisionTransformer(nn.Module):
         )
 
         self.transformer_encoder = TransformerEncoder(
-            hidden_dim=self.embedding_dim, num_heads=num_heads, num_encoder_layers=num_encoder_layers
+            hidden_dim=self.embedding_dim,
+            num_heads=num_heads,
+            num_encoder_layers=num_encoder_layers,
         )
 
         self.fc = nn.Linear(in_features=embedding_dim, out_features=output_dim)
