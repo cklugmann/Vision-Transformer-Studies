@@ -42,14 +42,18 @@ class TransformerBlock(nn.Module):
         :param x: A torch tensor of shape (B, N, D)
             where B is the batch size, N the sequence length and D the number of features.
         """
-        z = self.norm1(x + self.mha(x))
+        att = self.mha(x)
+        z = self.norm1(x + att)
         z = self.norm2(z + self.ffn(z))
         return z
 
 
 class TransformerEncoder(nn.Module):
     def __init__(
-        self, hidden_dim: int, num_heads: int, num_encoder_layers: int,
+        self,
+        hidden_dim: int,
+        num_heads: int,
+        num_encoder_layers: int,
     ):
         super().__init__()
         blocks = list()
@@ -58,7 +62,8 @@ class TransformerEncoder(nn.Module):
         self.block_transform = nn.Sequential(*blocks)
 
     def __call__(self, x, *args, **kwargs):
-        return self.block_transform(x)
+        z = self.block_transform(x)
+        return z
 
 
 class VisionTransformer(nn.Module):

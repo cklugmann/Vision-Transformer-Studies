@@ -31,7 +31,7 @@ def main():
 
     im_size = image.shape[-1]
     patch_size = 4
-    embedding_dim = 64
+    embedding_dim = 32
     # Number of classes
     output_dim = 10
 
@@ -42,8 +42,8 @@ def main():
         patch_size,
         embedding_dim,
         output_dim,
-        num_heads=4,
-        num_encoder_layers=8,
+        num_heads=2,
+        num_encoder_layers=1,
     )
     vit.to(device)
 

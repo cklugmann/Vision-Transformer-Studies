@@ -5,17 +5,25 @@ import torch.nn as nn
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, input_dim: int, output_dim: Optional[int] = None, num_heads: int = 1):
+    def __init__(
+        self, input_dim: int, output_dim: Optional[int] = None, num_heads: int = 1
+    ):
         super().__init__()
         self.input_dim = input_dim
-        self.output_dim = output_dim if output_dim is not None else input_dim // num_heads
+        self.output_dim = (
+            output_dim if output_dim is not None else input_dim // num_heads
+        )
         self.num_heads = num_heads
 
-        self.weight_query = nn.Parameter(torch.rand(self.num_heads, self.input_dim, self.output_dim))
-        self.weight_key = nn.Parameter(torch.rand(self.num_heads, self.input_dim, self.output_dim))
-        self.weight_value = nn.Parameter(torch.rand(self.num_heads, self.input_dim, self.output_dim))
+        mean = torch.zeros(size=(self.num_heads, self.input_dim, self.output_dim))
+        std = torch.ones(size=(self.num_heads, self.input_dim, self.output_dim))
+        self.weight_query = nn.Parameter(torch.normal(mean=mean, std=std))
+        self.weight_key = nn.Parameter(torch.normal(mean=mean, std=std))
+        self.weight_value = nn.Parameter(torch.normal(mean=mean, std=std))
 
-        self.weight_concat = nn.Parameter(torch.rand(self.output_dim, self.num_heads * self.output_dim))
+        self.weight_concat = nn.Parameter(
+            torch.rand(self.output_dim, self.num_heads * self.output_dim)
+        )
 
     @staticmethod
     def multi_head_dot(weights, inputs):
@@ -30,12 +38,13 @@ class MultiHeadAttention(nn.Module):
         scores = torch.div(
             torch.einsum("...hlm, ...hnm -> ...hln", q, k),
             torch.sqrt(torch.tensor(self.output_dim)),
-        ).softmax(dim=-1)
+        )
+
+        # print(scores[0, :2, :2, 0])
+        scores = scores.softmax(dim=-1)
 
         # Weighting the values with scores
-        z = torch.einsum(
-            "...ik, ...kj -> ...ij", scores, v
-        )
+        z = torch.einsum("...ik, ...kj -> ...ij", scores, v)
 
         # Swap number of heads and sequence length axes
         z = z.transpose(1, 2)

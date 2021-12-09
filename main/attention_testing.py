@@ -16,7 +16,6 @@ def main():
         scores = mha(x)
 
     print(scores.shape)
-
     print(sum(p.numel() for p in mha.parameters()))
 
 
