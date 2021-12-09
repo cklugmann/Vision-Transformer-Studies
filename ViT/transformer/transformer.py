@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+from ViT.utils import make_patches
 from ViT.transformer import MultiHeadAttention
 
 
@@ -108,12 +109,7 @@ class VisionTransformer(nn.Module):
         """
         :param x: A torch tensor of RGB images (B, 3, K, K) (assume square images)
         """
-        patches = torch.squeeze(
-            x.unfold(1, 3, 3)
-            .unfold(2, self.patch_size, self.patch_size)
-            .unfold(3, self.patch_size, self.patch_size),
-            dim=1,
-        )
+        patches = make_patches(x, self.patch_size)
 
         # Flatten patches
         flattened_patches = torch.flatten(patches, start_dim=-3)
