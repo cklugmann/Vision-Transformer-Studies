@@ -2,6 +2,7 @@ import torch
 import torchvision
 from torchvision import datasets
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 import torch.optim as optim
 
@@ -42,6 +43,8 @@ def eval_model(model, data_loader, criterion, device=torch.device("cpu")):
         )
     print("")
     model.train()
+
+    return mean_loss, mean_accuracy
 
 
 def main():
@@ -90,6 +93,8 @@ def main():
     optimizer = optim.Adam(vit.parameters(), lr=1e-3)
     criterion = nn.CrossEntropyLoss()
 
+    writer = SummaryWriter(log_dir="../logs")
+
     for epoch in range(1000):
         mean_loss, mean_accuracy = 0.0, 0.0
         for step, batch in enumerate(train_loader):
@@ -113,8 +118,15 @@ def main():
                 ),
                 end="",
             )
+
         print("")
-        eval_model(vit, test_loader, criterion, device=device)
+
+        writer.add_scalar("Loss/train", mean_loss, epoch)
+        writer.add_scalar("Accuracy/train", mean_accuracy, epoch)
+
+        mean_loss_test, mean_accuracy_test = eval_model(vit, test_loader, criterion, device=device)
+        writer.add_scalar("Loss/test", mean_loss_test, epoch)
+        writer.add_scalar("Accuracy/test", mean_accuracy_test, epoch)
 
 
 if __name__ == "__main__":
