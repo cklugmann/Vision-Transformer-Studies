@@ -10,23 +10,61 @@ import torch.nn as nn
 from ViT.transformer.transformer import VisionTransformer
 
 
+def running_mean(current_value, new_value, step):
+    return 1 / (step + 1) * (step * current_value + new_value)
+
+
 def compute_accuracy(logits, labels):
     pred_labels = torch.argmax(logits, dim=1)
     return torch.sum(pred_labels == labels) / len(labels)
 
 
+def eval_model(model, data_loader, criterion, device=torch.device("cpu")):
+    model.eval()
+    mean_loss, mean_accuracy = 0.0, 0.0
+    for step, batch in enumerate(data_loader):
+        images, labels = [x.to(device) for x in batch]
+
+        with torch.no_grad():
+            logits = model(images)
+            loss = criterion(logits, labels)
+
+        accuracy = compute_accuracy(logits, labels)
+
+        mean_loss = running_mean(mean_loss, loss.item(), step)
+        mean_accuracy = running_mean(mean_accuracy, accuracy.item(), step)
+
+        print(
+            "\r\tEval - step {} - loss {:.3f} - accuracy {:.3f}".format(
+                step + 1, mean_loss, mean_accuracy
+            ),
+            end="",
+        )
+    print("")
+    model.train()
+
+
 def main():
 
     import ssl
+
     ssl._create_default_https_context = ssl._create_unverified_context
 
+    transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+
     train_data = datasets.CIFAR10(
-        root="../datasets/cifar10",
-        train=True,
-        download=True,
-        transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor()]),
+        root="../datasets/cifar10", train=True, download=True, transform=transforms
     )
     train_loader = DataLoader(train_data, batch_size=64, shuffle=False)
+
+    test_data = datasets.CIFAR10(
+        root="../datasets/cifar10",
+        train=False,
+        download=True,
+        transform=transforms,
+    )
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=False)
+
     image, label = next(iter(train_loader))
 
     im_size = image.shape[-1]
@@ -52,9 +90,6 @@ def main():
     optimizer = optim.Adam(vit.parameters(), lr=1e-3)
     criterion = nn.CrossEntropyLoss()
 
-    def running_mean(current_value, new_value, step):
-        return 1 / (step + 1) * (step * current_value + new_value)
-
     for epoch in range(1000):
         mean_loss, mean_accuracy = 0.0, 0.0
         for step, batch in enumerate(train_loader):
@@ -78,8 +113,8 @@ def main():
                 ),
                 end="",
             )
-
         print("")
+        eval_model(vit, test_loader, criterion, device=device)
 
 
 if __name__ == "__main__":
