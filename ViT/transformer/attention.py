@@ -40,7 +40,6 @@ class MultiHeadAttention(nn.Module):
             torch.sqrt(torch.tensor(self.output_dim)),
         )
 
-        # print(scores[0, :2, :2, 0])
         scores = scores.softmax(dim=-1)
 
         # Weighting the values with scores

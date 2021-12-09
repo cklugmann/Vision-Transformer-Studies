@@ -42,8 +42,7 @@ class TransformerBlock(nn.Module):
         :param x: A torch tensor of shape (B, N, D)
             where B is the batch size, N the sequence length and D the number of features.
         """
-        att = self.mha(x)
-        z = self.norm1(x + att)
+        z = self.norm1(x + self.mha(x))
         z = self.norm2(z + self.ffn(z))
         return z
 
