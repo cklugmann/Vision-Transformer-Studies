@@ -53,18 +53,34 @@ def main():
 
     ssl._create_default_https_context = ssl._create_unverified_context
 
-    transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+    train_transforms = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.ColorJitter(.4, .4, .4),
+        torchvision.transforms.RandomHorizontalFlip(p=0.5)
+    ])
 
     train_data = datasets.CIFAR10(
-        root="../datasets/cifar10", train=True, download=True, transform=transforms
+        root="../datasets/cifar10", train=True, download=True, transform=train_transforms
     )
-    train_loader = DataLoader(train_data, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
+
+    """
+    image, _ = next(iter(train_loader))
+
+    import matplotlib.pyplot as plt
+    images = image[:8].numpy().transpose(0, 2, 3, 1)
+    fig, axs = plt.subplots(1, len(images))
+    for im, ax in zip(images, axs.reshape(-1,)):
+        ax.imshow(im)
+        ax.axis(False)
+    plt.show()
+    """
 
     test_data = datasets.CIFAR10(
         root="../datasets/cifar10",
         train=False,
         download=True,
-        transform=transforms,
+        transform=torchvision.transforms.ToTensor(),
     )
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=False)
 
